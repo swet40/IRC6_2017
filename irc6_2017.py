@@ -308,10 +308,10 @@ class IRC6_2017:
             elif vehicle == KEY_VEHICLE[2]:   # ClassA
                 f_info = IRC6_2017.table_3(carriageway_width)
                 f_m = f_info.get('f', 0.15)
-                g_m = f_info.get('g', 0.4)
+                g_m = f_info.get('g')
 
                 vehicle_width = 2.3  # m (1.8 + 0.5)
-                g_total = g_m + g_increment
+                g_total = g_m + g_increment    #?
                 remaining_width = carriageway_width - ((2.0 * vehicle_width) + g_total + (2.0 * f_m))
 
                 return {
@@ -321,7 +321,163 @@ class IRC6_2017:
                     'remaining_width': round(remaining_width, 3)
                 }
 
-
     
 
+            # Class A vehicles
+            elif vehicle == KEY_VEHICLE[2]:   # ClassA
+                f_info = IRC6_2017.table_3(carriageway_width)
+                f_m = f_info.get('f', 0.15)
+                g_m = f_info.get('g')
+
+                vehicle_width = 2.3  # m (1.8 + 0.5)
+                g_total = g_m + g_increment    #?
+                remaining_width = carriageway_width - ((2.0 * vehicle_width) + g_total + (2.0 * f_m))
+
+                return {
+                    'design_lanes': int(design_lanes),
+                    'vehicle_width': round(vehicle_width, 3),
+                    'f_m': round(f_m, 3),
+                    'remaining_width': round(remaining_width, 3)
+                }
+        elif design_lanes == 3:
+            if vehicle == KEY_VEHICLE[2]:   # ClassA
+                f_info = IRC6_2017.table_3(carriageway_width)
+                f_m = f_info.get('f', 0.15)
+                g_m = f_info.get('g')
+
+                vehicle_width = 2.3  # m (1.8 + 0.5)
+                g_total = g_m + g_increment    #?
+                remaining_width = carriageway_width - ((3.0 * vehicle_width) + (2.0 * f_m) + (2.0 * g_total))
+
+                return {
+                    'design_lanes': int(design_lanes),
+                    'vehicle_width': round(vehicle_width, 3),
+                    'f_m': round(f_m, 3),
+                    'remaining_width': round(remaining_width, 3)
+                }
+            elif vehicle == KEY_VEHICLE[0] and KEY_VEHICLE[2]:  # Class70R(W) and ClassA
+                f_info = IRC6_2017.table_3(carriageway_width)
+                f_m = f_info.get('f', 0.15)
+                g_m = f_info.get('g')
+                vehicle_width_70R = 2.790  # m
+                vehicle_width_A = 2.3  # m 
+                vehicle_width = vehicle_width_70R + vehicle_width_A  # m
+                g_total = 1.2 + g_increment
+                remaining_width = carriageway_width - ((2.0 * vehicle_width) + (2.0 * f_m) + g_total)
+
+                return {
+                    'design_lanes': int(design_lanes),
+                    'vehicle_width': round(vehicle_width, 3),
+                    'f_m': round(f_m, 3),
+                    'remaining_width': round(remaining_width, 3)
+                }
+
     
+    
+    @staticmethod
+    def table_7(span: float) -> float:
+        """
+        Returns the congestion factor for a given bridge span (in metres) as per Table 7 (image attached).
+
+        Rules implemented:
+        - For span <= 10 m: raises ValueError (table applies to spans above 10 m)
+        - For 10 < span <= 30 m: congestion factor = 1.15 (constant)
+        - For spans between the listed breakpoints (30,40,50,60,70) the congestion
+          factor is linearly interpolated between the corresponding values.
+        - For span >= 70 m: congestion factor = 1.70 (constant)
+
+        Breakpoints used (span_m -> factor):
+            30 -> 1.15
+            40 -> 1.30
+            50 -> 1.45
+            60 -> 1.60
+            70 -> 1.70
+
+        Args:
+            span (float): bridge span in metres
+
+        Returns:
+            float: congestion factor (rounded to 3 decimal places)
+        """
+        if span is None:
+            raise ValueError("Span must be provided (in metres)")
+
+        try:
+            s = float(span)
+        except Exception:
+            raise ValueError("Span must be a number")
+
+        if s <= 10.0:
+            raise ValueError("Table 7 applies to spans above 10 m")
+
+        # constant for upto 30 m
+        if s <= 30.0:
+            return round(1.15, 3)
+
+        # constant for beyond 70 m
+        if s >= 70.0:
+            return round(1.70, 3)
+
+        # Breakpoints for interpolation
+        breakpoints = [
+            (30.0, 1.15),
+            (40.0, 1.30),
+            (50.0, 1.45),
+            (60.0, 1.60),
+            (70.0, 1.70),
+        ]
+
+        # find interval that contains s
+        for i in range(len(breakpoints) - 1):
+            x0, y0 = breakpoints[i]
+            x1, y1 = breakpoints[i + 1]
+            if x0 <= s <= x1:
+                # linear interpolation
+                t = (s - x0) / (x1 - x0) if x1 != x0 else 0.0
+                val = y0 + t * (y1 - y0)
+                return round(val, 3)
+
+        # fallback (should not reach here) - return nearest endpoint
+        if s < breakpoints[0][0]:
+            return round(breakpoints[0][1], 3)
+        return round(breakpoints[-1][1], 3)
+    
+    @staticmethod
+    def cl_204_6_fatigue_load():
+        """
+        Makes an Fatigue truck vehicle in local coordinates
+        Returns a dictionary with keys:
+            'x' - list of longitudinal load positions (m)
+            'z' - list of transverse load positions (m)
+            'wheel_loads' - list of wheel loads (kN)
+        """
+        # Define units
+        axle_dist1= 4.50 * m
+        axle_dist2= 1.40 * m
+   
+
+        # Define wheel loads (kN) for each longitudinal axle position
+        # Mapping to the 3 longitudinal positions in `load_positions_x`.
+        # Values provided by user (converted to kN):
+        # [12, 14, 14]
+        wheel_loads = [12 * kN, 14 * kN, 14 * kN]
+
+        # Define longitudinal positions of each axle
+        load_positions_x = [
+                0,
+                axle_dist1,
+                axle_dist1 + axle_dist2,
+                ]
+            
+        # Transverse position of each wheel
+        load_positions_z = [-0.840, 0.840]
+
+        # make a dictonary to return vehicle data
+        return {
+            'x': load_positions_x,
+            'z': load_positions_z,
+            'wheel_loads': wheel_loads
+        }
+
+
+
