@@ -1,6 +1,6 @@
 import math
 import numpy as np
-from comman import *
+from common import *
 from irc5_2015 import IRC5_2015
 
 
@@ -52,6 +52,7 @@ class IRC6_2017:
             'z' - list of transverse load positions (m)
             'wheel_loads' - list of wheel loads (kN)
         """
+
         # Define units
         front_gap = 0.81 * m
         axle_dist1= 3.960 * m
@@ -916,3 +917,76 @@ class IRC6_2017:
             'Zone V': 0.36
         }
         return zone_factors
+
+        # Special Vehicle
+
+    @staticmethod
+    def cl_204_5_1_special_vehicle():
+        """
+        IRC:6-2017  (Clause 204.5  & 204.5.1)
+        Special Vehicle (SV): Special Multi Axle Hydraulic Trailer Vehicle
+        
+        Prime mover + 20 axle hydraulic trailer
+        GVW ≈ 385 tonnes
+        
+        Returns:
+            dict with:
+                'x'  : longitudinal axle positions (m)
+                'z'  : transverse wheel positions (m)
+                'wheel_loads' : axle loads (kN)
+                'total_load_kN' : total applied load (kN)
+                'total_load_tonne' : total applied load (tonnes)
+        """
+
+        #  Longitudinal spacing from Fig 6
+        # Prime mover
+        dist12 = 3.200 * m     # Axle1 → Axle2
+        dist23 = 1.370 * m     # Axle2 → Axle3
+        dist34 = 5.389 * m     # Axle3 → Axle4
+
+        # Trailer spacing
+        trailer_axle_spacing = 1.500 * m   # between each of 20 trailer axles
+
+        #  Axle Loads (tonnes converted to kN) 
+        # 2 steering axles → 6t each
+        # 2 bogie axles   → 9.5t each
+        # 20 trailer axles → 18t each
+        axle_loads_tonne = (
+            [6.0, 6.0] +
+            [9.5, 9.5] +
+            [18.0] * 20
+        )
+
+        wheel_loads = [ax * kN for ax in axle_loads_tonne]
+
+        #  Longitudinal X Positions 
+        load_positions_x = [0.0]
+
+        # Axle 2
+        load_positions_x.append(load_positions_x[-1] + dist12)
+
+        # Axle 3
+        load_positions_x.append(load_positions_x[-1] + dist23)
+
+        # Axle 4
+        load_positions_x.append(load_positions_x[-1] + dist34)
+
+        # Trailer (remaining 20 axles after first 4)
+        for i in range(1, 20):
+            load_positions_x.append(load_positions_x[-1] + trailer_axle_spacing)
+
+        # Transverse Position 
+        # Same convention as other vehicles: two-wheel track placement
+        load_positions_z = [-1.5, 1.5]
+
+        # Totals 
+        total_load_tonne = sum(axle_loads_tonne)
+        total_load_kN = sum(wheel_loads)
+
+        return {
+            'x': load_positions_x,
+            'z': load_positions_z,
+            'wheel_loads': wheel_loads,
+            'total_load_kN': round(total_load_kN, 3),
+            'total_load_tonne': round(total_load_tonne, 3)
+        }
