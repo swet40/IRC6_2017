@@ -918,75 +918,81 @@ class IRC6_2017:
         }
         return zone_factors
 
-        # Special Vehicle
+    # Special Vehicle
 
     @staticmethod
     def cl_204_5_1_special_vehicle():
-        """
-        IRC:6-2017  (Clause 204.5  & 204.5.1)
-        Special Vehicle (SV): Special Multi Axle Hydraulic Trailer Vehicle
-        
-        Prime mover + 20 axle hydraulic trailer
-        GVW ≈ 385 tonnes
-        
-        Returns:
-            dict with:
-                'x'  : longitudinal axle positions (m)
-                'z'  : transverse wheel positions (m)
-                'wheel_loads' : axle loads (kN)
-                'total_load_kN' : total applied load (kN)
-                'total_load_tonne' : total applied load (tonnes)
-        """
 
-        #  Longitudinal spacing from Fig 6
-        # Prime mover
-        dist12 = 3.200 * m     # Axle1 → Axle2
-        dist23 = 1.370 * m     # Axle2 → Axle3
-        dist34 = 5.389 * m     # Axle3 → Axle4
+        # IRC:6-2017 Clause 204.5 / 204.5.1
+        # Special Vehicle (Prime mover + 20 axle hydraulic trailer)
 
-        # Trailer spacing
-        trailer_axle_spacing = 1.500 * m   # between each of 20 trailer axles
+        # Longitudinal Spacing 
+        dist12 = 3.200 * m
+        dist23 = 1.370 * m
+        dist34 = 5.389 * m
+        trailer_spacing = 1.500 * m
 
-        #  Axle Loads (tonnes converted to kN) 
-        # 2 steering axles → 6t each
-        # 2 bogie axles   → 9.5t each
-        # 20 trailer axles → 18t each
+        #  Axle Loads (tonnes) 
         axle_loads_tonne = (
-            [6.0, 6.0] +
-            [9.5, 9.5] +
-            [18.0] * 20
+            [6.0] +           # 1 steering axle
+            [9.5, 9.5] +      # 2 bogie axles
+            [18.0] * 20       # 20 trailer axles
         )
 
-        wheel_loads = [ax * kN for ax in axle_loads_tonne]
+        #  Convert tonne → kN 
+        wheel_loads = [ax * g for ax in axle_loads_tonne]
 
-        #  Longitudinal X Positions 
+        #  Longitudinal Positions 
         load_positions_x = [0.0]
-
-        # Axle 2
         load_positions_x.append(load_positions_x[-1] + dist12)
-
-        # Axle 3
         load_positions_x.append(load_positions_x[-1] + dist23)
-
-        # Axle 4
         load_positions_x.append(load_positions_x[-1] + dist34)
 
-        # Trailer (remaining 20 axles after first 4)
-        for i in range(1, 20):
-            load_positions_x.append(load_positions_x[-1] + trailer_axle_spacing)
+        # 19 spacings → gives 20 trailer axle positions total
+        for _ in range(19):
+            load_positions_x.append(load_positions_x[-1] + trailer_spacing)
 
-        # Transverse Position 
-        # Same convention as other vehicles: two-wheel track placement
-        load_positions_z = [-1.5, 1.5]
+        #  Transverse Positions 
+        load_positions_z = [-0.9, 0.9]
 
-        # Totals 
+        #  Totals 
         total_load_tonne = sum(axle_loads_tonne)
         total_load_kN = sum(wheel_loads)
+
+        #  Axle ↔ Position Explicit Mapping 
+
+        axle_load_map = []
+        location_table = []
+        header = f"{'Axle':>4} | {'X (m)':>7} | {'Load (t)':>8} | {'Load (kN)':>9}"
+        location_table.append(header)
+        location_table.append("-" * len(header))
+
+        for i in range(len(axle_loads_tonne)):
+            axle = {
+                'axle_no': i + 1,
+                'x': round(load_positions_x[i], 3),
+                'load_tonne': round(axle_loads_tonne[i], 2),
+                'load_kN': round(wheel_loads[i], 2)
+            }
+            axle_load_map.append(axle)
+
+            # printable line
+            location_table.append(
+                f"{axle['axle_no']:>4} | {axle['x']:>7.3f} | {axle['load_tonne']:>8.2f} | {axle['load_kN']:>9.2f}"
+            )
+
+        pretty_table = "\n".join(location_table)
+
+
+        assert len(load_positions_x) == len(axle_loads_tonne), \
+            "Axle count and position count mismatch"
 
         return {
             'x': load_positions_x,
             'z': load_positions_z,
             'wheel_loads': wheel_loads,
             'total_load_kN': round(total_load_kN, 3),
-            'total_load_tonne': round(total_load_tonne, 3)
+            'total_load_tonne': round(total_load_tonne, 3),
+            'axle_load_map': axle_load_map,
+            'pretty_axle_table': pretty_table
         }
