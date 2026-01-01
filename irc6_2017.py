@@ -44,7 +44,7 @@ class IRC6_2017:
         return dead_load
     
     @staticmethod
-    def cl_204_1_Class70R_vehicle():
+    def cl_204_1_Class70R_vehicle_wheel():
         """
         Makes an Class70R vehicle in local coordinates
         Returns a dictionary with keys:
@@ -80,7 +80,7 @@ class IRC6_2017:
                 ]
             
         # Transverse position of each wheel
-        load_positions_z = [-1.395, 1.395]
+        load_positions_z = [-0.965, 0.965]
 
         # Spacing between two sucessive class 70R vehicles
         spacing_Class70R = 30.0 * m
@@ -91,6 +91,42 @@ class IRC6_2017:
             'z': load_positions_z,
             'wheel_loads': wheel_loads,
             'spacing_Class70R': spacing_Class70R
+        }
+    
+    @staticmethod
+    def cl_204_1_Class70R_vehicle_track():
+        """
+        Makes an Class70R vehicle(Track) in local coordinates
+        Returns a dictionary with keys:
+            'x' - list of longitudinal load positions vertex(m)
+            'z' - list of transverse load positions vertex(m)
+            'wheel_loads' - list of wheel loads (kN)
+        """
+        # Define units
+        start_vertex_x = 0.0 * m
+        end_vertex_x = 4.570 * m
+
+        # Define track loads (kN/m2) 
+        track_loads_udl = 4.32 * kN / m2 
+
+        # Define longitudinal positions of track vertices
+        load_positions_x = [
+                start_vertex_x,
+                start_vertex_x + end_vertex_x,
+                ]
+            
+        # Transverse position of each track
+        load_positions_z = [-1.03, 1.03]
+
+        # Spacing between two sucessive class 70R track vehicles
+        spacing_Class70R_T = 90.0 * m
+
+        # make a dictonary to return vehicle data
+        return {
+            'x': load_positions_x,
+            'z': load_positions_z,
+            'wheel_loads_udl': track_loads_udl,
+            'spacing_Class70R(T)': spacing_Class70R_T
         }
     
     @staticmethod
@@ -146,7 +182,7 @@ class IRC6_2017:
     
     
     @staticmethod
-    def table_3(clear_carriageway_width):
+    def table_3(carriageway_width):
         """
         Calculates the minimum clearance values for Class A train vehicles based on given clear carriageway width
         as per IRC:6-2017 Table 3.
@@ -163,16 +199,16 @@ class IRC6_2017:
             ValueError: If the carriageway width is less than 5.3 meters
         """
         # Check if width is within valid range
-        if clear_carriageway_width < 5.3:
+        if carriageway_width < 5.3:
             raise ValueError("Clear carriageway width must be at least 5.3 meters")
             
         # f value is constant 150 mm for all widths
         f = 0.15  # meters
         
         # Calculate g value based on carriageway width
-        if 5.3 <= clear_carriageway_width <= 6.1:
+        if 5.3 <= carriageway_width <= 6.1:
             # Linear interpolation between 0.4m at 5.3m width and 1.2m at 6.1m width
-            g = 0.4 + (clear_carriageway_width - 5.3) * (1.2 - 0.4) / (6.1 - 5.3)
+            g = 0.4 + (carriageway_width - 5.3) * (1.2 - 0.4) / (6.1 - 5.3)
         else:  # width > 6.1m
             g = 1.2  # meters
             
@@ -500,9 +536,9 @@ class IRC6_2017:
         load_kg_m2 = FOOTWAY_LOADS.get(footway_type, 500)  # default to 500 kg/m2 if not found
 
         # Convert load to kN/m2
-        # load_kN_m2 = (load_kg_m2 * 9.81) / 1000.0  # kN/m2
+        load_kN_m2 = (load_kg_m2 * 9.81) / 1000.0  # kN/m2
 
-        return round(load_kg_m2, 3)
+        return round(load_kN_m2, 3)
     
     @staticmethod
     def cl_206_2_kerb_load():
@@ -512,21 +548,24 @@ class IRC6_2017:
         """
         if IRC5_2015.cl_109_8_1_road_kerb_outline('road_kerb_width') >= 600:
             kerb_load_kg_m2 = FOOTWAY_LOADS.get('Default', 500)  # 500 kg/m2
+
+        # Convert load to kN/m2
+        kerb_kN_m2 = (kerb_load_kg_m2 * 9.81) / 1000.0  # kN/m2
         
-        return round(kerb_load_kg_m2, 3)
+        return round(kerb_kN_m2, 3)
     
     @staticmethod
-    def cl_206_5_parapet_load():
+    def cl_206_5_railing_load():
         """
         Returns the parapet load in kg/m based on the parapet type
         as per IRC:6-2017 Clause 206.5.
         """
-        if KEY_PARAPET_TYPE[0] == 'Solid/Partially filled':
-            parapet_load_kg_m2 = 150.0  # kg/m
-        elif KEY_PARAPET_TYPE[0] == 'Frame type':
-            parapet_load_kg_m2 = 150.0  # kg/m
+        if KEY_RAILING_TYPE[0] == 'IRC 5 RCC railing':
+            railing_load_kg_m2 = 150.0  # kg/m
+        elif KEY_RAILING_TYPE[0] == 'IRC 5 steel railing':
+            railing_load_kg_m2 = 150.0  # kg/m
 
-        return round(parapet_load_kg_m2, 3)
+        return round(railing_load_kg_m2, 3)
     
     @staticmethod
     def cl_208_2_impact_factor(span):
@@ -554,7 +593,7 @@ class IRC6_2017:
     @staticmethod
     def cl_208_3_impact_factor(span):
         """
-        Returns the impact factor (IM) for Class 70R loading 
+        Returns the impact factor (IM) for Class AA and Class 70R loading 
         according to IRC:6-2017 Clause 208.3.
 
         Parameters:
@@ -867,7 +906,7 @@ class IRC6_2017:
                 wheel_load = IRC6_2017.cl_204_1_ClassA_vehicle()['wheel_loads']
                 braking_force_1 = 0.20 * sum(wheel_load)  # kN
             if lane > 2:
-                wheel_load = IRC6_2017.cl_204_1_Class70R_vehicle()['wheel_loads']
+                wheel_load = IRC6_2017.cl_204_1_Class70R_vehicle_wheel()['wheel_loads']
                 braking_force_2 = 0.05 * sum(wheel_load)  # kN
             
             total_braking_force = braking_force_1 + braking_force_2
